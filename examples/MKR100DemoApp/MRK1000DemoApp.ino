@@ -1,13 +1,14 @@
 /*
- *  This sketch demonstrates using the Gigabits device library with a MKR1000
+ *  This sketch demonstrates using the Gigabits device library 
+ *  with a MKR1000 and HCPA-5V-U3 I2C Sensor
  */
 #define GIGABITS_MAX_CALLBACKS 10
 #include <SPI.h>
 #include <WiFi101.h>
 #include <Gigabits.h>
 
-char ssid[] = "MexiDroid";
-char pass[] = "PeterAnswersIsNotReal";
+char ssid[] = "ssid";
+char pass[] = "password";
 
 #include <Wire.h>
 // HCPA-5V-U3 I2C address is 0x28(40)
@@ -31,7 +32,7 @@ void setup() {
       Serial.print("Received a ");Serial.println(data[i]);
     }
   });
-  gigabits.begin("e9837d47b610ee29399831f917791a44", net);
+  gigabits.begin("devkey", net);
   Wire.begin();
   // Start I2C transmission
   Wire.beginTransmission(Addr);

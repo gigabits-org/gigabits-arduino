@@ -9,36 +9,29 @@ Gigabits::~Gigabits() {
 }
 
 void Gigabits::connect() {
-    Serial.println("Connecting.");
 
     while (!client.connect(devKey, "gigabits", "gigabits")) {
-        Serial.print(".");
         delay(1000);
     }
-
-    Serial.println("\nconnected!");
 
     client.subscribe(rxTopic);
 }
 
 void Gigabits::attachMessageHandler() {
     client.onMessage([this](String &topic, String &payload){
-      Serial.println("Dev key: " + String(this->devKey));
-      Serial.println("incoming: " + topic + " - " + payload);
-  
+
       DeserializationError error = deserializeJson(this->rxBuf, payload);
+      // Json failed to parse
       if (error) {
-        Serial.println("deserializeJson() failed: ");
-        Serial.println(error.c_str());
         return;
       }
   
       uint32_t sensorIndex = this->rxBuf["si"];
       const char* argType = this->rxBuf["at"];
   
-      auto cb = getCallback(sensorIndex);        
+      auto cb = getCallback(sensorIndex);
+      // Callback not defined
       if (cb == nullptr) {
-        Serial.println("Callback not defined");
         return;
       }
 
@@ -55,7 +48,6 @@ void Gigabits::attachMessageHandler() {
       // Other types will come in as an array
       JsonArray arr = this->rxBuf["c"].as<JsonArray>();
       if (arr.isNull()) {
-        Serial.println("Command is not array");
         return;
       }
 
@@ -71,9 +63,8 @@ void Gigabits::attachMessageHandler() {
           cb->intCb(data, arr.size());
           free(data);
           
-
+        // Callback not defined
         } else {
-          Serial.println("Callback not defined");
           return;
         }
 
@@ -87,8 +78,9 @@ void Gigabits::attachMessageHandler() {
           }
           cb->dblCb(data, arr.size());
           free(data);
+
+        // Callback not defined
         } else {
-          Serial.println("Callback not defined");
           return;
         }
       }
@@ -100,18 +92,21 @@ void Gigabits::attachMessageHandler() {
   });
 }
 
+// Connects to the Gigabits API
 bool Gigabits::begin(const char *inDevKey, Client &net) {
     txBuf.to<JsonObject>();
     devKey = inDevKey;
     sprintf(txTopic, "device/%s/records", devKey);
     sprintf(rxTopic, "server/%s/command", devKey);
     
-    client.begin("api.dev.gigabits.io", net);
+    client.begin(F("api.dev.gigabits.io"), net);
     attachMessageHandler();
 
     connect();    
 }
 
+// Run mqtt client at most every 10ms
+// Keeps the client connected
 bool Gigabits::run() {
   if (millis() - lastRun > 10) {
     lastRun = millis();
@@ -122,15 +117,14 @@ bool Gigabits::run() {
     if (!client.connected()) {
         connect();
     }
-  }  
-
+  }
 }
 
+// Unload the tx buffer over mqtt and clear it
 void Gigabits::transmitValues() {
   JsonObject txObj = txBuf.as<JsonObject>();      
 
   if (txObj.size() > 0) {
-    Serial.println("Sending buffer");
     String toSend;
     serializeJson(txObj, toSend);
     client.publish(txTopic, toSend);
