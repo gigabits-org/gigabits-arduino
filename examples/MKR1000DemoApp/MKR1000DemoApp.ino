@@ -57,27 +57,32 @@ void loop() {
     // Start I2C transmission
     Wire.beginTransmission(Addr);
     // Stop I2C transmission
-    Wire.endTransmission();
-  
-    // Request 4 bytes of data
-    Wire.requestFrom(Addr, 4);
-  
-    // Read 4 bytes of data
-    // humidity msb, humidity lsb, cTemp msb, cTemp lsb
-    if (Wire.available() == 4)
-    {
-      data[0] = Wire.read();
-      data[1] = Wire.read();
-      data[2] = Wire.read();
-      data[3] = Wire.read();
-    }
-  
-    // Convert the data to 14-bits
-    float humidity = (((data[0] & 0x3F) * 256) + data[1]) / 16384.0 * 100.0;
-    float cTemp = (((data[2] * 256) + (data[3] & 0xFC)) / 4) / 16384.0 * 165.0 - 40.0;
-    float fTemp = (cTemp * 1.8) + 32;
+    byte error = Wire.endTransmission();
+
+    if (error == 0) {
+      // Request 4 bytes of data
+      Wire.requestFrom(Addr, 4);
     
-    gigabits.sendRecord(1, humidity);
-    gigabits.sendRecord(2, fTemp);
+      // Read 4 bytes of data
+      // humidity msb, humidity lsb, cTemp msb, cTemp lsb
+      if (Wire.available() == 4)
+      {
+        data[0] = Wire.read();
+        data[1] = Wire.read();
+        data[2] = Wire.read();
+        data[3] = Wire.read();
+      }
+    
+      // Convert the data to 14-bits
+      float humidity = (((data[0] & 0x3F) * 256) + data[1]) / 16384.0 * 100.0;
+      float cTemp = (((data[2] * 256) + (data[3] & 0xFC)) / 4) / 16384.0 * 165.0 - 40.0;
+      float fTemp = (cTemp * 1.8) + 32;
+      
+      gigabits.sendRecord(1, humidity);
+      gigabits.sendRecord(2, fTemp);  
+    } else {
+      gigabits.sendRecord(1, "Error: disconnected");
+      gigabits.sendRecord(2, "Error: disconnected");
+    }
   }
 }

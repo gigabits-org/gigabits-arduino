@@ -99,7 +99,7 @@ bool Gigabits::begin(const char *inDevKey, Client &net) {
     sprintf(txTopic, "device/%s/records", devKey);
     sprintf(rxTopic, "server/%s/command", devKey);
     
-    client.begin(F("api.dev.gigabits.io"), net);
+    client.begin("api.dev.gigabits.io", net);
     attachMessageHandler();
 
     connect();    
