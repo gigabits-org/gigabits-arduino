@@ -2,6 +2,7 @@
  *  This sketch demonstrates using the Gigabits device library 
  *  with an ESP32 and IoT Trainer board
  */
+// Set max callbacks to store on the stack. Defaults to 10
 #define GIGABITS_MAX_CALLBACKS 10
 #include <SPI.h>
 #include <Wire.h>
@@ -15,13 +16,15 @@
 // Screen size is 128x32
 Adafruit_SSD1306 display(128, 32, &Wire, OLED_RESET);
 
-char ssid[] = "MexiNet";
-char pass[] = "PeterAnswersIsNotARealTarot3496";
-char devKey[] = "e9837d47b610ee29399831f917791a44";
+// Change these!
+char ssid[] = "ssid";
+char pass[] = "pass";
+char devKey[] = "devkey";
+char secret[] = "secret";
 
 WiFiClient net;
 
-// HCPA-5V-U3 I2C address is 0x28(40)
+// I2C addresses
 #define HCPA_Addr 0x28
 #define PROXY_Addr 0x39
 #define OLED_Addr 0x3C
@@ -32,6 +35,7 @@ WiFiClient net;
 #define MPL_Addr 0x60
 #define HP203_Addr 0x77
 
+// Gigabits sensor indices
 #define HUMIDITY_SENSOR_IDX 1
 #define TEMPERATURE_SENSOR_IDX 2
 #define OLED_INVERT_COMMAND_IDX 3
@@ -47,7 +51,6 @@ WiFiClient net;
 #define PCA_CH2_IDX 22
 #define PCA_CH3_IDX 23
 #define PCA_CH4_IDX 24
-
 
 Gigabits gigabits;
 
@@ -74,7 +77,7 @@ void setup() {
 }
 
 void loop() {
-  // This should be called on every loop
+  // This should be called on very often
   gigabits.run();
 
   // publish a message roughly every 5 seconds.
