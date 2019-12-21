@@ -14,7 +14,7 @@ char pass[] = "password";
 // HCPA-5V-U3 I2C address is 0x28(40)
 #define Addr 0x28
 
-WiFiClient net;
+WiFiSSLClient net;
 Gigabits gigabits;
 
 unsigned long lastMillis = 0;
@@ -32,7 +32,11 @@ void setup() {
       Serial.print("Received a ");Serial.println(data[i]);
     }
   });
-  gigabits.begin("devkey", net);
+  gigabits.begin("your_device_key", "your_device_secret", net);
+  // Custom endpoint
+  // gigabits.begin("your_device_key", "your_device_secret", net, "api.dev.gigabits.io");
+  // Custom port
+  // gigabits.begin("your_device_key", "your_device_secret", net, "api.dev.gigabits.io", 1883);
   Wire.begin();
   // Start I2C transmission
   Wire.beginTransmission(Addr);
