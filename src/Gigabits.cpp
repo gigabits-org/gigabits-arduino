@@ -10,7 +10,7 @@ Gigabits::~Gigabits() {
 
 void Gigabits::connect() {
 
-    while (!client.connect(devKey, "gigabits", "gigabits")) {
+    while (!client.connect(devKey, devKey, devSecret)) {
         delay(1000);
     }
 
@@ -93,16 +93,17 @@ void Gigabits::attachMessageHandler() {
 }
 
 // Connects to the Gigabits API
-bool Gigabits::begin(const char *inDevKey, Client &net) {
+bool Gigabits::begin(const char *inDevKey, const char *inDevSecret, Client &net, const char *endpoint, uint16_t port) {
     txBuf.to<JsonObject>();
     devKey = inDevKey;
+    devSecret = inDevSecret;
     sprintf(txTopic, "device/%s/records", devKey);
     sprintf(rxTopic, "server/%s/command", devKey);
     
-    client.begin("api.dev.gigabits.io", net);
+    client.begin(endpoint, port, net);
     attachMessageHandler();
 
-    connect();    
+    connect();  
 }
 
 // Run mqtt client at most every 10ms

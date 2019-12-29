@@ -26,7 +26,9 @@ class Gigabits {
         Gigabits();
         ~Gigabits();
 
-        bool begin(const char *devKey, Client &net);
+        bool begin(const char *devKey, const char *devSecret, Client &net) { this->begin(devKey, devSecret, net, "mqtt.gigabits.io"); };
+        bool begin(const char *devKey, const char *devSecret, Client &net, const char *endpoint) { this->begin(devKey, devSecret, net, endpoint, 8883); };
+        bool begin(const char *devKey, const char *devSecret, Client &net, const char *endpoint, uint16_t port);
         bool run();
         
         void sendRecord(uint32_t idx, uint32_t value);
@@ -42,6 +44,7 @@ class Gigabits {
         MQTTClient client;
         unsigned long lastRun = 0;
         const char *devKey = nullptr;
+        const char *devSecret = nullptr;
         void connect();
         void attachMessageHandler();
         void transmitValues();
