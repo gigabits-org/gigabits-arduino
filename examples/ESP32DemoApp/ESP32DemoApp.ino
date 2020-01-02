@@ -1,6 +1,16 @@
 /*
  *  This sketch demonstrates using the Gigabits device library 
- *  with an ESP32 and IoT Trainer board using an unencrypted connection
+ *  with an ESP32 using an unencrypted connection
+ *  It reads data from the following sensors using I2C:
+ *  ADC121C021 (Gas)
+ *  ADC121C021 (Soil)
+ *  TMD26721 (Proxy)
+ *  MPL115A2 (Pressure)
+ *  HCPA_5V_U3 (Temperature and Humidity)
+ *  HP203B (Altitude)
+ * 
+ *  It sends commands for the following:
+ *  SSD1306 (Display)
  */
 // Set max callbacks to store on the stack. Defaults to 10
 #define GIGABITS_MAX_CALLBACKS 10
@@ -387,6 +397,7 @@ void sendHP203Data() {
   gigabits.sendRecord(ALTITUDE_SENSOR_IDX, altitude);
 }
 
+// Reference https://github.com/adafruit/Adafruit_SSD1306/tree/master/examples/ssd1306_128x32_i2c
 void setupDisplay() {
   // SSD1306_SWITCHCAPVCC = generate display voltage from 3.3V internally
   if(!display.begin(SSD1306_SWITCHCAPVCC, OLED_Addr)) { // Address 0x3C for 128x32
