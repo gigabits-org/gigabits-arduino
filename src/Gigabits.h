@@ -5,6 +5,10 @@
 #define GIGABITS_MAX_CALLBACKS 10
 #endif
 
+#ifndef GIGABITS_JSON_SIZE
+#define GIGABITS_JSON_SIZE 500
+#endif
+
 #include "mqtt/MQTT.h"
 #include <Client.h>
 #include <ArduinoJson.h>
@@ -50,9 +54,13 @@ class Gigabits {
         void transmitValues();
         char txTopic[48];
         char rxTopic[48];
-        StaticJsonDocument<200> txBuf;
-        StaticJsonDocument<200> rxBuf;
-        
+#ifdef GIGABITS_USE_DYNAMIC_JSON
+        DynamicJsonDocument txBuf(GIGABITS_JSON_SIZE);
+        DynamicJsonDocument rxBuf(GIGABITS_JSON_SIZE);
+#else
+        StaticJsonDocument<GIGABITS_JSON_SIZE> txBuf;
+        StaticJsonDocument<GIGABITS_JSON_SIZE> rxBuf;
+#endif
         uint16_t cMapIdx = 0;
         IndexCallbackMap* commandMaps[GIGABITS_MAX_CALLBACKS];
         IndexCallbackMap* getCallback(uint32_t idx);

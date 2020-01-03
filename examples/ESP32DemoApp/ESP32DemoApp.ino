@@ -13,7 +13,9 @@
  *  SSD1306 (Display)
  */
 // Set max callbacks to store on the stack. Defaults to 10
-#define GIGABITS_MAX_CALLBACKS 10
+#define GIGABITS_MAX_CALLBACKS 20
+// Set size of JSON buffers. Defaults to 500
+#define GIGABITS_JSON_SIZE 1000
 #include <SPI.h>
 #include <Wire.h>
 #include <Adafruit_GFX.h>
