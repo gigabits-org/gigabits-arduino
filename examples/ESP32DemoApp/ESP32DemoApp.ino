@@ -471,8 +471,6 @@ void sendTSLData() {
   } else {
     gigabits.sendRecord(LIGHT_SENSOR_IDX, err_msg);
   }
-  
-
 }
 
 // Reference https://github.com/adafruit/Adafruit_SSD1306/tree/master/examples/ssd1306_128x32_i2c
