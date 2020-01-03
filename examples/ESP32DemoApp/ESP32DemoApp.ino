@@ -144,19 +144,22 @@ void sendHCPAData() {
       data[1] = Wire.read();
       data[2] = Wire.read();
       data[3] = Wire.read();
-    }
-  
-    // Convert the data to 14-bits
-    float humidity = (((data[0] & 0x3F) * 256) + data[1]) / 16384.0 * 100.0;
-    float cTemp = (((data[2] * 256) + (data[3] & 0xFC)) / 4) / 16384.0 * 165.0 - 40.0;
-    float fTemp = (cTemp * 1.8) + 32;
     
-    gigabits.sendRecord(HUMIDITY_SENSOR_IDX, humidity);
-    gigabits.sendRecord(TEMPERATURE_SENSOR_IDX, fTemp);  
-  } else {
-    gigabits.sendRecord(HUMIDITY_SENSOR_IDX, err_msg);
-    gigabits.sendRecord(TEMPERATURE_SENSOR_IDX, err_msg);
+      // Convert the data to 14-bits
+      float humidity = (((data[0] & 0x3F) * 256) + data[1]) / 16384.0 * 100.0;
+      float cTemp = (((data[2] * 256) + (data[3] & 0xFC)) / 4) / 16384.0 * 165.0 - 40.0;
+      float fTemp = (cTemp * 1.8) + 32;
+
+      Serial.print("Humidity: ");Serial.println(humidity);
+      Serial.print("Temp: ");Serial.println(fTemp);
+
+      gigabits.sendRecord(HUMIDITY_SENSOR_IDX, humidity);
+      gigabits.sendRecord(TEMPERATURE_SENSOR_IDX, fTemp);
+      return;
+    }
   }
+  gigabits.sendRecord(HUMIDITY_SENSOR_IDX, err_msg);
+  gigabits.sendRecord(TEMPERATURE_SENSOR_IDX, err_msg);
 }
 
 // Reference https://github.com/ControlEverythingCommunity/MPL115A2/blob/master/Arduino/MPL115A2.ino
@@ -246,6 +249,7 @@ void sendMPLData() {
     float cTemp = (temp - 498) / (-5.35) + 25.0;
     float fTemp = cTemp * 1.8 + 32.0;
 
+    Serial.print("Pressure: ");Serial.println(pressure);
     gigabits.sendRecord(PRESSURE_SENSOR_IDX, pressure);
   } else {
     gigabits.sendRecord(PRESSURE_SENSOR_IDX, err_msg);
@@ -275,6 +279,8 @@ void sendGasData() {
     
     // Convert the data to 12 bits
     uint32_t raw_adc = ((data[0] & 0x0F) * 256) + data[1];
+
+    Serial.print("Gas: ");Serial.println(raw_adc);
     gigabits.sendRecord(GAS_SENSOR_IDX, raw_adc);
   } else {
     gigabits.sendRecord(GAS_SENSOR_IDX, err_msg);
@@ -336,6 +342,7 @@ void sendProxyData() {
     // Convert the data
     uint32_t proximity = data[1] * 256 + data[0];
 
+    Serial.print("Proxy: ");Serial.println(proximity);
     gigabits.sendRecord(PROXY_SENSOR_IDX, proximity);
 
   } else {
@@ -364,7 +371,9 @@ void sendSoilData() {
     data[1] = Wire.read();
 
     // Convert the data to 12 bits
-    uint32_t raw_adc = ((data[0] & 0x0F) * 256) + data[1];  
+    uint32_t raw_adc = ((data[0] & 0x0F) * 256) + data[1];
+
+    Serial.print("Soil: ");Serial.println(raw_adc);
     gigabits.sendRecord(SOIL_SENSOR_IDX, raw_adc);
   } else {
     gigabits.sendRecord(SOIL_SENSOR_IDX, err_msg);
@@ -406,6 +415,7 @@ void sendHP203Data() {
     // Convert the data to 20-bits
     float altitude = (((data[0] & 0x0F) * 65536) + (data[1] * 256) + data[2]) / 100.00;
 
+    Serial.print("Altitude: ");Serial.println(altitude);
     gigabits.sendRecord(ALTITUDE_SENSOR_IDX, altitude);
 
   } else {
@@ -455,6 +465,8 @@ void sendTSLData() {
     
     // Convert the data
     float luminance = data[1] * 256 + data[0];
+
+    Serial.print("Luminance: ");Serial.println(luminance);
     gigabits.sendRecord(LIGHT_SENSOR_IDX, luminance);
   } else {
     gigabits.sendRecord(LIGHT_SENSOR_IDX, err_msg);
