@@ -8,6 +8,7 @@
  *  MPL115A2 (Pressure)
  *  HCPA_5V_U3 (Temperature and Humidity)
  *  HP203B (Altitude)
+ *  TSL45315 (Light)
  * 
  *  It sends commands for the following:
  *  SSD1306 (Display)
@@ -46,6 +47,7 @@ WiFiClient net;
 #define GAS_Addr 0x52
 #define MPL_Addr 0x60
 #define HP203_Addr 0x77
+#define TSL_Addr 0x29
 
 // Gigabits sensor indices
 #define HUMIDITY_SENSOR_IDX 1
@@ -56,6 +58,7 @@ WiFiClient net;
 #define SOIL_SENSOR_IDX 6
 #define PROXY_SENSOR_IDX 7
 #define ALTITUDE_SENSOR_IDX 8
+#define LIGHT_SENSOR_IDX 9
 
 #define ADC_IDX 10
 
@@ -71,6 +74,8 @@ unsigned long lastMillis = 0;
 // MPL pressure compensation values
 float a1 = 0.0, b1 = 0.0, b2 = 0.0, c12 = 0.0;
 
+char err_msg[] = "Error: d";
+
 void setup() {
   Wire.begin();
   Serial.begin(115200);
@@ -79,6 +84,7 @@ void setup() {
   setupMPL();
   setupProxy();
   setupHP203();
+  setupTSL();
   WiFi.begin(ssid, pass);
   Serial.println("Connecting..");
   
@@ -101,6 +107,7 @@ void loop() {
     sendProxyData();
     sendSoilData();
     sendHP203Data();
+    sendTSLData();
   }
 
 }
@@ -147,8 +154,8 @@ void sendHCPAData() {
     gigabits.sendRecord(HUMIDITY_SENSOR_IDX, humidity);
     gigabits.sendRecord(TEMPERATURE_SENSOR_IDX, fTemp);  
   } else {
-    gigabits.sendRecord(HUMIDITY_SENSOR_IDX, "Error: disconnected");
-    gigabits.sendRecord(TEMPERATURE_SENSOR_IDX, "Error: disconnected");
+    gigabits.sendRecord(HUMIDITY_SENSOR_IDX, err_msg);
+    gigabits.sendRecord(TEMPERATURE_SENSOR_IDX, err_msg);
   }
 }
 
@@ -226,21 +233,23 @@ void sendMPLData() {
     data[1] = Wire.read();
     data[2] = Wire.read();
     data[3] = Wire.read();
+
+    // Convert the data to 10-bits
+    int pres = (data[0] * 256 + (data[1] & 0xC0)) / 64;
+    int temp = (data[2] * 256 + (data[3] & 0xC0)) / 64;
+
+    // Calculate pressure compensation
+    float presComp = a1 + (b1 + c12 * temp) * pres + b2 * temp;
+
+    // Convert the data
+    float pressure = (65.0 / 1023.0) * presComp + 50.0;
+    float cTemp = (temp - 498) / (-5.35) + 25.0;
+    float fTemp = cTemp * 1.8 + 32.0;
+
+    gigabits.sendRecord(PRESSURE_SENSOR_IDX, pressure);
+  } else {
+    gigabits.sendRecord(PRESSURE_SENSOR_IDX, err_msg);
   }
-
-  // Convert the data to 10-bits
-  int pres = (data[0] * 256 + (data[1] & 0xC0)) / 64;
-  int temp = (data[2] * 256 + (data[3] & 0xC0)) / 64;
-
-  // Calculate pressure compensation
-  float presComp = a1 + (b1 + c12 * temp) * pres + b2 * temp;
-
-  // Convert the data
-  float pressure = (65.0 / 1023.0) * presComp + 50.0;
-  float cTemp = (temp - 498) / (-5.35) + 25.0;
-  float fTemp = cTemp * 1.8 + 32.0;
-
-  gigabits.sendRecord(PRESSURE_SENSOR_IDX, pressure);
 }
 
 // Reference https://github.com/ControlEverythingCommunity/ADC121C021/blob/master/Arduino/ADC121C021.ino
@@ -263,17 +272,18 @@ void sendGasData() {
   {
     data[0] = Wire.read();
     data[1] = Wire.read();
+    
+    // Convert the data to 12 bits
+    uint32_t raw_adc = ((data[0] & 0x0F) * 256) + data[1];
+    gigabits.sendRecord(GAS_SENSOR_IDX, raw_adc);
+  } else {
+    gigabits.sendRecord(GAS_SENSOR_IDX, err_msg);
   }
-  // Convert the data to 12 bits
-  uint32_t raw_adc = ((data[0] & 0x0F) * 256) + data[1];  
-  
-  gigabits.sendRecord(GAS_SENSOR_IDX, raw_adc);
-
 }
 
 // Reference https://github.com/ControlEverythingCommunity/TMD26721/blob/master/Arduino/TMD26721.ino
 void setupProxy() {
-    // Start I2C Transmission
+  // Start I2C Transmission
   Wire.beginTransmission(PROXY_Addr);
   // Select enable register
   Wire.write(0x00 | 0x80);
@@ -319,16 +329,18 @@ void sendProxyData() {
   
   // Read 2 bytes of data
   // proximity lsb, proximity msb
-  if(Wire.available() == 2)
-  {
+  if(Wire.available() == 2) {
     data[0] = Wire.read();
     data[1] = Wire.read();
+
+    // Convert the data
+    uint32_t proximity = data[1] * 256 + data[0];
+
+    gigabits.sendRecord(PROXY_SENSOR_IDX, proximity);
+
+  } else {
+    gigabits.sendRecord(PROXY_SENSOR_IDX, err_msg);
   }
-
-  // Convert the data
-  uint32_t proximity = data[1] * 256 + data[0];
-
-  gigabits.sendRecord(PROXY_SENSOR_IDX, proximity);
 }
 
 // Reference https://github.com/ControlEverythingCommunity/ADC121C021/blob/master/Arduino/ADC121C021.ino
@@ -347,16 +359,16 @@ void sendSoilData() {
   
   // Read 2 bytes of data
   // raw_adc msb, raw_adc lsb
-  if(Wire.available() == 2)
-  {
+  if(Wire.available() == 2) {
     data[0] = Wire.read();
     data[1] = Wire.read();
-  }
 
-  // Convert the data to 12 bits
-  uint32_t raw_adc = ((data[0] & 0x0F) * 256) + data[1];  
-  
-  gigabits.sendRecord(SOIL_SENSOR_IDX, raw_adc);
+    // Convert the data to 12 bits
+    uint32_t raw_adc = ((data[0] & 0x0F) * 256) + data[1];  
+    gigabits.sendRecord(SOIL_SENSOR_IDX, raw_adc);
+  } else {
+    gigabits.sendRecord(SOIL_SENSOR_IDX, err_msg);
+  }
 }
 
 // Reference https://github.com/ControlEverythingCommunity/HP203B/blob/master/Arduino/HP203B.ino
@@ -386,17 +398,69 @@ void sendHP203Data() {
 
   // Read 3 bytes of data
   // altitude msb, altitude csb, altitude lsb
-  if (Wire.available() == 3)
-  {
+  if (Wire.available() == 3) {
     data[0] = Wire.read();
     data[1] = Wire.read();
     data[2] = Wire.read();
+    
+    // Convert the data to 20-bits
+    float altitude = (((data[0] & 0x0F) * 65536) + (data[1] * 256) + data[2]) / 100.00;
+
+    gigabits.sendRecord(ALTITUDE_SENSOR_IDX, altitude);
+
+  } else {
+    gigabits.sendRecord(ALTITUDE_SENSOR_IDX, err_msg);
   }
+}
 
-  // Convert the data to 20-bits
-  float altitude = (((data[0] & 0x0F) * 65536) + (data[1] * 256) + data[2]) / 100.00;
+// Reference https://github.com/ControlEverythingCommunity/TSL45315/blob/master/Arduino/TSL45315.ino
+void setupTSL() {
+  // Start I2C Transmission
+  Wire.beginTransmission(TSL_Addr);
+  // Select control register
+  Wire.write(0x80);
+  // Normal operation
+  Wire.write(0x03);
+  // Stop I2C transmission
+  Wire.endTransmission();
+  
+  // Start I2C Transmission
+  Wire.beginTransmission(TSL_Addr);
+  // Select configuration register
+  Wire.write(0x81);
+  // Multiplier 1x, Tint : 400ms
+  Wire.write(0x00);
+  // Stop I2C transmission
+  Wire.endTransmission();
+  delay(300);  
+}
 
-  gigabits.sendRecord(ALTITUDE_SENSOR_IDX, altitude);
+void sendTSLData() {
+  Serial.println("Sending luminance");
+  unsigned int data[2];
+  // Start I2C Transmission
+  Wire.beginTransmission(TSL_Addr);
+  // Select data register
+  Wire.write(0x84);
+  // Stop I2C transmission
+  Wire.endTransmission();
+  
+  // Request 2 bytes of data
+  Wire.requestFrom(TSL_Addr, 2);
+  // Read 2 bytes of data
+  // luminance lsb, luminance msb
+  if(Wire.available() == 2) {
+    data[0] = Wire.read();
+    data[1] = Wire.read();
+    
+    // Convert the data
+    float luminance = data[1] * 256 + data[0];
+    gigabits.sendRecord(LIGHT_SENSOR_IDX, luminance);
+  } else {
+    gigabits.sendRecord(LIGHT_SENSOR_IDX, err_msg);
+  }
+  
+
 }
 
 // Reference https://github.com/adafruit/Adafruit_SSD1306/tree/master/examples/ssd1306_128x32_i2c
