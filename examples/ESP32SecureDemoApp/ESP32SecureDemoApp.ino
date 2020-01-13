@@ -1,5 +1,5 @@
 /*
- *  This sketch demonstrates using the Gigabits device library 
+ *  This sketch demonstrates using the Gigabits device library
  *  with an ESP32 using a secure TLS connection
  *  It reads data from the following sensors using I2C:
  *  ADC121C021 (Gas)
@@ -7,9 +7,8 @@
  *  TMD26721 (Proxy)
  *  MPL115A2 (Pressure)
  *  HCPA_5V_U3 (Temperature and Humidity)
- *  HP203B (Altitude)
- *  TSL45315 (Light)
- * 
+ *  TSL2561(Light)
+ *
  *  It sends commands for the following:
  *  SSD1306 (Display)
  */
@@ -68,8 +67,7 @@ const char* amazon_root_ca = \
 #define SOIL_Addr 0x51
 #define GAS_Addr 0x52
 #define MPL_Addr 0x60
-#define HP203_Addr 0x77
-#define TSL_Addr 0x29
+#define TSL_Addr 0x49
 
 // Gigabits sensor indices
 #define HUMIDITY_SENSOR_IDX 1
@@ -79,8 +77,8 @@ const char* amazon_root_ca = \
 #define GAS_SENSOR_IDX 5
 #define SOIL_SENSOR_IDX 6
 #define PROXY_SENSOR_IDX 7
-#define ALTITUDE_SENSOR_IDX 8
-#define LIGHT_SENSOR_IDX 9
+#define VISIBLE_LIGHT_SENSOR_IDX 8
+#define INFRARED_LIGHT_SENSOR_IDX 9
 
 #define ADC_IDX 10
 
@@ -96,7 +94,7 @@ unsigned long lastMillis = 0;
 // MPL pressure compensation values
 float a1 = 0.0, b1 = 0.0, b2 = 0.0, c12 = 0.0;
 
-char err_msg[] = "Error: d";
+char err_msg[] = "Error: disconnected";
 
 void setup() {
   Wire.begin();
@@ -105,15 +103,14 @@ void setup() {
   setupHCPA();
   setupMPL();
   setupProxy();
-  setupHP203();
   setupTSL();
   WiFi.begin(ssid, pass);
   net.setCACert(amazon_root_ca);
   Serial.println("Connecting..");
-  
-  delay(300);  
-  
-  setupGigabits();  
+
+  delay(300);
+
+  setupGigabits();
 
 }
 
@@ -129,7 +126,6 @@ void loop() {
     sendGasData();
     sendProxyData();
     sendSoilData();
-    sendHP203Data();
     sendTSLData();
   }
 
@@ -158,7 +154,7 @@ void sendHCPAData() {
   if (error == 0) {
     // Request 4 bytes of data
     Wire.requestFrom(HCPA_Addr, 4);
-  
+
     // Read 4 bytes of data
     // humidity msb, humidity lsb, cTemp msb, cTemp lsb
     if (Wire.available() == 4)
@@ -167,7 +163,7 @@ void sendHCPAData() {
       data[1] = Wire.read();
       data[2] = Wire.read();
       data[3] = Wire.read();
-    
+
       // Convert the data to 14-bits
       float humidity = (((data[0] & 0x3F) * 256) + data[1]) / 16384.0 * 100.0;
       float cTemp = (((data[2] * 256) + (data[3] & 0xFC)) / 4) / 16384.0 * 165.0 - 40.0;
@@ -188,8 +184,8 @@ void sendHCPAData() {
 // Reference https://github.com/ControlEverythingCommunity/MPL115A2/blob/master/Arduino/MPL115A2.ino
 void setupMPL() {
 
-  unsigned int data[8];
-  
+  unsigned int data[8] = {0};
+
   for (int i = 0; i < 8; i++) {
     // Start I2C Transmission
     Wire.beginTransmission(MPL_Addr);
@@ -224,7 +220,7 @@ void setupMPL() {
   }
   b2 = b2 / 16384.0;
   c12 = ((data[6] * 256.0 + data[7]) / 4.0) / 4194304.0;
-  
+
   delay(300);
 }
 
@@ -289,17 +285,17 @@ void sendGasData() {
   Wire.write(0x00);
   // Stop I2C transmission
   Wire.endTransmission();
-  
+
   // Request 2 bytes of data
   Wire.requestFrom(GAS_Addr, 2);
-  
+
   // Read 2 bytes of data
   // raw_adc msb, raw_adc lsb
   if(Wire.available() == 2)
   {
     data[0] = Wire.read();
     data[1] = Wire.read();
-    
+
     // Convert the data to 12 bits
     uint32_t raw_adc = ((data[0] & 0x0F) * 256) + data[1];
 
@@ -345,17 +341,17 @@ void setupProxy() {
 void sendProxyData() {
   Serial.println("Sending proxy");
   unsigned int data[2];
-  
+
   // Start I2C Transmission
   Wire.beginTransmission(PROXY_Addr);
   // Select data register
   Wire.write(0x18 | 0x80);
   // Stop I2C Transmission
   Wire.endTransmission();
-  
+
   // Request 2 bytes of data
   Wire.requestFrom(PROXY_Addr, 2);
-  
+
   // Read 2 bytes of data
   // proximity lsb, proximity msb
   if(Wire.available() == 2)
@@ -384,10 +380,10 @@ void sendSoilData() {
   Wire.write(0x00);
   // Stop I2C transmission
   Wire.endTransmission();
-  
+
   // Request 2 bytes of data
   Wire.requestFrom(SOIL_Addr, 2);
-  
+
   // Read 2 bytes of data
   // raw_adc msb, raw_adc lsb
   if(Wire.available() == 2)
@@ -405,101 +401,70 @@ void sendSoilData() {
   }
 }
 
-// Reference https://github.com/ControlEverythingCommunity/HP203B/blob/master/Arduino/HP203B.ino
-void setupHP203() {
-  // Start I2C transmission
-  Wire.beginTransmission(HP203_Addr);
-  // Send OSR and channel setting command
-  Wire.write(0x40 | 0x04 | 0x01);
+
+// Reference https://github.com/ControlEverythingCommunity/TSL2561/blob/master/Arduino/TSL2561.ino
+void setupTSL() {
+  // Start I2C Transmission
+  Wire.beginTransmission(TSL_Addr);
+  // Select control register
+  Wire.write(0x00 | 0x80);
+  // Normal operation, turn on power
+  Wire.write(0x03);
+  // Stop I2C transmission
+  Wire.endTransmission();
+
+  // Start I2C Transmission
+  Wire.beginTransmission(TSL_Addr);
+  // Select timing register
+  Wire.write(0x01 | 0x80);
+  // Multiplier 1x, Tint : 400ms
+  Wire.write(0x02);
   // Stop I2C transmission
   Wire.endTransmission();
   delay(300);
 }
 
-void sendHP203Data() {
-  Serial.println("Sending altitude");
-  unsigned int data[3];
-
-  // Start I2C transmission
-  Wire.beginTransmission(HP203_Addr);
-  // Select data register
-  Wire.write(0x31);
-  // Stop I2C transmission
-  Wire.endTransmission();
-
-  // Request 3 bytes of data
-  Wire.requestFrom(HP203_Addr, 3);
-
-  // Read 3 bytes of data
-  // altitude msb, altitude csb, altitude lsb
-  if (Wire.available() == 3)
-  {
-    data[0] = Wire.read();
-    data[1] = Wire.read();
-    data[2] = Wire.read();
-    
-    // Convert the data to 20-bits
-    float altitude = (((data[0] & 0x0F) * 65536) + (data[1] * 256) + data[2]) / 100.00;
-
-    Serial.print("Altitude: ");Serial.println(altitude);
-    gigabits.sendRecord(ALTITUDE_SENSOR_IDX, altitude);
-
-  } else {
-    gigabits.sendRecord(ALTITUDE_SENSOR_IDX, err_msg);
-  }
-}
-
-
-// Reference https://github.com/ControlEverythingCommunity/TSL45315/blob/master/Arduino/TSL45315.ino
-void setupTSL() {
-  // Start I2C Transmission
-  Wire.beginTransmission(TSL_Addr);
-  // Select control register
-  Wire.write(0x80);
-  // Normal operation
-  Wire.write(0x03);
-  // Stop I2C transmission
-  Wire.endTransmission();
-  
-  // Start I2C Transmission
-  Wire.beginTransmission(TSL_Addr);
-  // Select configuration register
-  Wire.write(0x81);
-  // Multiplier 1x, Tint : 400ms
-  Wire.write(0x00);
-  // Stop I2C transmission
-  Wire.endTransmission();
-  delay(300);  
-}
-
 void sendTSLData() {
-  Serial.println("Sending luminance");
-  unsigned int data[2];
-  // Start I2C Transmission
-  Wire.beginTransmission(TSL_Addr);
-  // Select data register
-  Wire.write(0x84);
-  // Stop I2C transmission
-  Wire.endTransmission();
-  
-  // Request 2 bytes of data
-  Wire.requestFrom(TSL_Addr, 2);
-  // Read 2 bytes of data
-  // luminance lsb, luminance msb
-  if(Wire.available() == 2) {
-    data[0] = Wire.read();
-    data[1] = Wire.read();
-    
-    // Convert the data
-    float luminance = data[1] * 256 + data[0];
+  Serial.println("Sending visible & IR");
+  bool lightOk = true;
+  unsigned int data[4] ={0};
+  for(int i = 0; i < 4; i++)
+  {
+    // To read light data, you prod the sensor, then read two channels of data,
+    // each one of which has 2 bytes.  The 4 bytes are held in 4 registers on
+    // the chip.
+    // Starts I2C communication
+    Wire.beginTransmission(TSL_Addr);
+    // Select one of the four data registers
+    Wire.write((140 + i));
+    // Stop I2C Transmission
+    Wire.endTransmission();
 
-    Serial.print("Luminance: ");Serial.println(luminance);
-    gigabits.sendRecord(LIGHT_SENSOR_IDX, luminance);
-  } else {
-    gigabits.sendRecord(LIGHT_SENSOR_IDX, err_msg);
+    // Request 1 byte of data
+    Wire.requestFrom(TSL_Addr, 1);
+
+    // Read 1 byte of data
+    if(Wire.available() == 1)
+    {
+      data[i] = Wire.read();
+    } else {
+      lightOk = false;
+    }
+    delay(200);
   }
-  
 
+  if(lightOk) {
+    // Convert the data
+    double ch0 = ((data[1] & 0xFF) * 256) + (data[0] & 0xFF);
+    double ch1 = ((data[3] & 0xFF) * 256) + (data[2] & 0xFF);
+
+    Serial.printf("Visible Light: %f, Infrared: %f\n", ch0 - ch1, ch1);
+    gigabits.sendRecord(VISIBLE_LIGHT_SENSOR_IDX, ch0 - ch1);
+    gigabits.sendRecord(INFRARED_LIGHT_SENSOR_IDX, ch1);
+  } else {
+    gigabits.sendRecord(VISIBLE_LIGHT_SENSOR_IDX, err_msg);
+    gigabits.sendRecord(INFRARED_LIGHT_SENSOR_IDX, err_msg);
+  }
 }
 
 // Reference https://github.com/adafruit/Adafruit_SSD1306/tree/master/examples/ssd1306_128x32_i2c
