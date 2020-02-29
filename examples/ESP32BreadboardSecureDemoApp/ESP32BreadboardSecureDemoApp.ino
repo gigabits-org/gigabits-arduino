@@ -29,6 +29,9 @@ char secret[] = "N9nDy9IvX9qnQixnfiYTVyM5jLb9mGJH";
 
 WiFiClientSecure net;
 
+// The Amazon Root CA is the certificate that people use to communicate with
+// Amazon over SSL.  This certificate can be found at
+// https://www.amazontrust.com/repository/AmazonRootCA1.pem. 
 const char* amazon_root_ca = \
   "-----BEGIN CERTIFICATE-----\n" \
   "MIIDQTCCAimgAwIBAgITBmyfz5m/jAo54vB4ikPmljZbyjANBgkqhkiG9w0BAQsF\n" \
@@ -179,14 +182,15 @@ void setupLight() {
 void sendLightData() {
   Serial.println("Sending Light Data");
   int intLightData = analogRead(lightSensorPin);
-  // The deocumetation says no light => small signal,
-  // but it works the other way around.
+  // The documetation says no light => small signal,
+  // but it works the other way around for our first light sensor.
   float raw_adc = (float)(4096 - intLightData);
   Serial.print("Light Sensor: "); Serial.println(raw_adc);
   gigabits.sendRecord(VISIBLE_LIGHT_SENSOR_IDX, raw_adc);
 }
 
 void setupGigabits() {
-  // mqtt.gigabits.io and 8883 are the defaults.
+  // mqtt.gigabits.io and 8883 are the default values of the two arguments
+  // after "net".
   gigabits.begin(devKey, secret, net);
 }
