@@ -20,10 +20,10 @@
 #include <Gigabits.h>
 
 // Change these!
-char ssid[] = "Bark Place";
-char pass[] = "31f28065b6c93ee750b211de84";
-char devKey[] = "DuIVac7AsqI5wSoSEPJAGpr";
-char secret[] = "N9nDy9IvX9qnQixnfiYTVyM5jLb9mGJH";
+char ssid[] = "ssid";
+char pass[] = "pass";
+char devKey[] = "devkey";
+char secret[] = "secret";
 
 WiFiSSLClient net;
 
