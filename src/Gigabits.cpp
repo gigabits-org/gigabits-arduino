@@ -25,10 +25,10 @@ void Gigabits::attachMessageHandler() {
       if (error) {
         return;
       }
-  
+
       uint32_t sensorIndex = this->rxBuf["si"];
       const char* argType = this->rxBuf["at"];
-  
+
       auto cb = getCallback(sensorIndex);
       // Callback not defined
       if (cb == nullptr) {
@@ -59,10 +59,10 @@ void Gigabits::attachMessageHandler() {
           for (JsonVariant v : arr) {
             data[i++] = v.as<int>();
           }
-        
+
           cb->intCb(data, arr.size());
           free(data);
-          
+
         // Callback not defined
         } else {
           return;
@@ -99,11 +99,11 @@ bool Gigabits::begin(const char *inDevKey, const char *inDevSecret, Client &net,
     devSecret = inDevSecret;
     sprintf(txTopic, "device/%s/records", devKey);
     sprintf(rxTopic, "server/%s/command", devKey);
-    
+
     client.begin(endpoint, port, net);
     attachMessageHandler();
 
-    connect();  
+    connect();
 }
 
 // Run mqtt client at most every 10ms
@@ -112,7 +112,7 @@ bool Gigabits::run() {
   if (millis() - lastRun > 10) {
     lastRun = millis();
     transmitValues();
-        
+
     client.loop();
 
     if (!client.connected()) {
@@ -123,13 +123,13 @@ bool Gigabits::run() {
 
 // Unload the tx buffer over mqtt and clear it
 void Gigabits::transmitValues() {
-  JsonObject txObj = txBuf.as<JsonObject>();      
+  JsonObject txObj = txBuf.as<JsonObject>();
 
   if (txObj.size() > 0) {
     String toSend;
     serializeJson(txObj, toSend);
     client.publish(txTopic, toSend);
-    
+
     // Clear tx buffer
     txBuf.to<JsonObject>();
   }

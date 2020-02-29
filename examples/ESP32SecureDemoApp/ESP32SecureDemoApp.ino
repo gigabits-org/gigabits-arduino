@@ -104,9 +104,10 @@ void setup() {
   setupMPL();
   setupProxy();
   setupTSL();
+  Serial.println("Connecting to router");
   WiFi.begin(ssid, pass);
+  Serial.println("Connected to router!");
   net.setCACert(amazon_root_ca);
-  Serial.println("Connecting..");
 
   delay(300);
 
