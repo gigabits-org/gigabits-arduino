@@ -23,10 +23,8 @@
 // Change these!
 char ssid[] = "ssid";
 char pass[] = "pass";
-char devKey[] = "devkey";
+char devKey[] = "devKey";
 char secret[] = "secret";
-
-WiFiClient net;
 
 // Define the ESP32 pins used.  The constraints for pin use are described in
 // https://randomnerdtutorials.com/esp32-pinout-reference-gpios/
@@ -43,7 +41,15 @@ int gasSensorPin   = 39;     // physical pin 4
 int dhtPin         = 32;     // physical pin 7.  This must be on a pin that
                              // can be either input or output.  The code that
                              // reads it uses both modes.
+#define LEDPin       33
 int hygrometerPin  = 34;     // physical pin 5
+
+#include <LEDDisplay.h>       // LEDPin must be defined before this is included
+
+// Screen size is 1 pixel
+LEDDisplay display;
+
+WiFiClient net;
 
 // Gigabits sensor indices
 #define HUMIDITY_SENSOR_IDX 1
@@ -74,6 +80,7 @@ void setup() {
   setupGas();
   setupHygrometer();
   setupLight();
+  setupDisplay();
 
   Serial.println("Connecting..");
   WiFi.begin(ssid, pass);
@@ -95,6 +102,7 @@ void loop() {
     sendGasData();
     sendHygrometerData();
     sendLightData();
+    Serial.println();
   }
 }
 
@@ -156,12 +164,43 @@ void sendLightData() {
   int intLightData = analogRead(lightSensorPin);
   // The deocumetation says no light => small signal,
   // but it works the other way around.
-  float raw_adc = (float)(4096 - intLightData);
+  float raw_adc = (float)(2000 - intLightData);
   Serial.print("Light Sensor: "); Serial.println(raw_adc);
   gigabits.sendRecord(VISIBLE_LIGHT_SENSOR_IDX, raw_adc);
 }
 
+// Set up our single-LED display
+void setupDisplay() {
+  display.turnOnDisplay();
+  pinMode(LEDPin, OUTPUT);
+  digitalWrite(LEDPin, LOW);
+}
+
 void setupGigabits() {
+  // Add command listener to invert our "display" (one LED) using a
+  // lambda function
+  gigabits.addCommandListener(OLED_INVERT_COMMAND_IDX, [](int32_t *data, size_t sz){
+    // I'm trying to copy the original code.   I think it does something like data[0] == 0 => set display to 0.  data[0] == 1 => toggle display.
+    if (sz > 0) {
+      if (data[0] == 0) {
+        display.turnOffDisplay();
+      } else {
+        display.toggleDisplay();
+      }
+      if (display.getDisplay()) {
+        Serial.println("Setting LEDPin LOW");
+        digitalWrite(LEDPin, LOW);
+      } else {
+        Serial.println("Setting LEDPin HIGH");
+        digitalWrite(LEDPin, HIGH);
+      }
+    }
+
+    for (size_t i = 0; i < sz; i++) {
+      Serial.print("Received a ");Serial.println(data[i]);
+    }
+  });
+
   // Port 1883 is for plain traffic
   gigabits.begin(devKey, secret, net, "mqtt.gigabits.io", 1883);
 }

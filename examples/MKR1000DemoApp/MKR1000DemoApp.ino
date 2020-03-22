@@ -6,9 +6,12 @@
 #include <SPI.h>
 #include <WiFi101.h>
 #include <Gigabits.h>
+#include <DHT.h>
 
-char ssid[] = "Bark Place";
-char pass[] = "31f28065b6c93ee750b211de84";
+char ssid[] = "ssid";
+char pass[] = "pass";
+char devKey[] = "devkey";
+char secret[] = "secret";
 
 #include <Wire.h>
 // HCPA-5V-U3 I2C address is 0x28(40)
@@ -34,11 +37,11 @@ void setup() {
       Serial.print("Received a ");Serial.println(data[i]);
     }
   });
-  // gigabits.begin("naZnfIC3CdrZWwzNTa87Orm", "EXByrMzSKlncdulUTTlZKlLK7eB1LwRL", net);
+  // gigabits.begin("devKey", "secret", net);
   // Custom endpoint
   // gigabits.begin("your_device_key", "your_device_secret", net, "api.dev.gigabits.io");
   // Custom port
-  gigabits.begin("naZnfIC3CdrZWwzNTa87Orm", "EXByrMzSKlncdulUTTlZKlLK7eB1LwRL", net, "mqtt.gigabits.io", 1883);
+  gigabits.begin(devKey, secret, net, "mqtt.gigabits.io", 1883);
   Wire.begin();
   // Start I2C transmission
   Wire.beginTransmission(Addr);
