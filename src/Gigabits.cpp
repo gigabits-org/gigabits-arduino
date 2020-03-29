@@ -17,6 +17,7 @@ void Gigabits::connect() {
     client.subscribe(rxTopic);
 }
 
+// Attaches a message handler to the MQTT client object
 void Gigabits::attachMessageHandler() {
     client.onMessage([this](String &topic, String &payload){
 
@@ -86,13 +87,18 @@ void Gigabits::attachMessageHandler() {
       }
 
       // Report back the command received
+      // Used by server to confirm receipt
       String ret;
       serializeJson(arr, ret);
       this->sendRecord(sensorIndex, ret);
   });
 }
 
-// Connects to the Gigabits API
+/* 
+*  Connects to the Gigabits API
+*  Default endpoint is mqtt.gigabits.io
+*  Default port is 8883
+*/
 bool Gigabits::begin(const char *inDevKey, const char *inDevSecret, Client &net, const char *endpoint, uint16_t port) {
     txBuf.to<JsonObject>();
     devKey = inDevKey;
@@ -106,8 +112,10 @@ bool Gigabits::begin(const char *inDevKey, const char *inDevSecret, Client &net,
     connect();
 }
 
-// Run mqtt client at most every 10ms
-// Keeps the client connected
+/*
+*  Run mqtt client at most every 10ms to prevent overloading network
+*  Keeps the client connected
+*/
 bool Gigabits::run() {
   if (millis() - lastRun > 10) {
     lastRun = millis();
